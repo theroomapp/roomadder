@@ -1,0 +1,36 @@
+{
+  "name": "the-room-admin",
+  "version": "1.0.0",
+  "description": "Admin tools for adding rooms to The Room app",
+  "main": "add-rooms-script.js",
+  "scripts": {
+    "add-rooms": "node add-rooms-script.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "the-room",
+    "admin",
+    "firebase",
+    "express",
+    "rooms"
+  ],
+  "author": "The Room Admin",
+  "license": "MIT",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/the-room-admin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-org/the-room-admin/issues"
+  },
+  "homepage": "https://github.com/your-org/the-room-admin#readme"
+} 
