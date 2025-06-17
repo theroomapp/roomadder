@@ -276,44 +276,88 @@
         
         async function extractFromAppleMaps(appleMapsUrl) {
             try {
-                // Parse Apple Maps URL
-                // Format: https://maps.apple.com/?ll=34.001421,-118.483332&q=The%20Victorian&...
+                // Parse Apple Maps URL - handle multiple formats
+                // Format 1: https://maps.apple.com/?ll=34.001421,-118.483332&q=The%20Victorian&...
+                // Format 2: https://maps.apple.com/place?address=140%20E%2017th%20St&...
                 
                 let latitude = null;
                 let longitude = null;
                 let placeName = '';
                 
-                // Extract coordinates from ll parameter
+                // Extract coordinates from ll parameter (Format 1)
                 const coordMatch = appleMapsUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
                 if (coordMatch) {
                     latitude = parseFloat(coordMatch[1]);
                     longitude = parseFloat(coordMatch[2]);
                 }
                 
-                // Extract place name from q parameter
+                // Extract place name from q parameter (Format 1)
                 const nameMatch = appleMapsUrl.match(/[?&]q=([^&]+)/);
                 if (nameMatch) {
                     placeName = decodeURIComponent(nameMatch[1].replace(/\+/g, ' '));
                 }
                 
-                // Extract address if no place name found
-                if (!placeName) {
+                // Handle Format 2: place?address= URLs
+                if (!latitude || !placeName) {
                     const addressMatch = appleMapsUrl.match(/[?&]address=([^&]+)/);
                     if (addressMatch) {
                         const fullAddress = decodeURIComponent(addressMatch[1].replace(/\+/g, ' '));
-                        // Extract business name from address if possible
-                        placeName = fullAddress.split(',')[0];
+                        console.log('Extracted address:', fullAddress);
+                        
+                        // Extract business name from address (usually the first part before comma)
+                        const addressParts = fullAddress.split(',');
+                        if (addressParts.length > 0) {
+                            // Try to extract business name - if it's a number + street, ask for name
+                            const firstPart = addressParts[0].trim();
+                            if (/^\d+\s/.test(firstPart)) {
+                                // Starts with number, likely a street address - need business name
+                                placeName = prompt(`Address found: ${fullAddress}\n\nPlease enter the business/place name:`) || firstPart;
+                            } else {
+                                // Doesn't start with number, likely a business name
+                                placeName = firstPart;
+                            }
+                        }
+                        
+                        // Try to geocode the address to get coordinates
+                        if (!latitude && fullAddress) {
+                            try {
+                                // Simple geocoding fallback - ask user for coordinates
+                                showStatus('Getting coordinates...', 'loading');
+                                const coords = prompt(`Coordinates not found in URL.\n\nFor: ${placeName}\nAddress: ${fullAddress}\n\nPlease enter coordinates as: latitude,longitude\n(You can find these by searching the address on Google Maps)`);
+                                
+                                if (coords && coords.includes(',')) {
+                                    const [lat, lng] = coords.split(',').map(s => parseFloat(s.trim()));
+                                    if (!isNaN(lat) && !isNaN(lng)) {
+                                        latitude = lat;
+                                        longitude = lng;
+                                    }
+                                }
+                            } catch (error) {
+                                console.log('Geocoding failed, will prompt for manual coordinates');
+                            }
+                        }
                     }
                 }
                 
-                if (latitude && longitude) {
+                // Final fallback - ask for missing information
+                if (!placeName) {
+                    placeName = prompt('Place name could not be extracted. Please enter the place name:') || 'Unnamed Place';
+                }
+                
+                if (!latitude || !longitude) {
+                    const coords = prompt(`Coordinates not found.\n\nFor: ${placeName}\n\nPlease enter coordinates as: latitude,longitude`);
+                    if (coords && coords.includes(',')) {
+                        const [lat, lng] = coords.split(',').map(s => parseFloat(s.trim()));
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            latitude = lat;
+                            longitude = lng;
+                        }
+                    }
+                }
+                
+                if (latitude && longitude && placeName) {
                     extractedLatitude = latitude;
                     extractedLongitude = longitude;
-                    
-                    // If no place name extracted, ask user
-                    if (!placeName) {
-                        placeName = prompt('Place name could not be extracted. Please enter the place name:') || 'Unnamed Place';
-                    }
                     
                     document.getElementById('roomTitle').value = placeName;
                     
@@ -328,7 +372,7 @@
                     
                     showStatus('Location info extracted successfully from Apple Maps!', 'success');
                 } else {
-                    throw new Error('Could not extract coordinates from Apple Maps URL');
+                    throw new Error('Could not extract complete information from Apple Maps URL');
                 }
                 
             } catch (error) {
