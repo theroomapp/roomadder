@@ -132,8 +132,8 @@
         
         <form id="roomForm">
             <div class="form-group">
-                <label for="mapsLink">Google Maps Share Link:</label>
-                <input type="url" id="mapsLink" placeholder="https://maps.app.goo.gl/..." required>
+                <label for="mapsLink">Google Maps or Apple Maps Share Link:</label>
+                <input type="url" id="mapsLink" placeholder="https://maps.app.goo.gl/... or https://maps.apple.com/..." required>
                 <button type="button" onclick="extractFromMaps()" style="width: auto; margin: 10px 0; padding: 8px 15px;">Extract Info</button>
                 <div id="extractedInfo"></div>
             </div>
@@ -229,15 +229,19 @@
         async function extractFromMaps() {
             const mapsLink = document.getElementById('mapsLink').value;
             if (!mapsLink) {
-                showStatus('Please enter a Google Maps link first', 'error');
+                showStatus('Please enter a Google Maps or Apple Maps link first', 'error');
                 return;
             }
             
             showStatus('Extracting location info...', 'loading');
             
             try {
-                // Method 1: Try to resolve the shortened URL and extract coordinates
-                if (mapsLink.includes('maps.app.goo.gl') || mapsLink.includes('goo.gl')) {
+                // Method 1: Apple Maps
+                if (mapsLink.includes('maps.apple.com')) {
+                    await extractFromAppleMaps(mapsLink);
+                }
+                // Method 2: Google Maps shortened URLs
+                else if (mapsLink.includes('maps.app.goo.gl') || mapsLink.includes('goo.gl')) {
                     const instruction = `
                         To extract location info from your shortened link:
                         1. Click your link: ${mapsLink}
@@ -254,11 +258,11 @@
                         await manualExtraction();
                     }
                 } 
-                // Method 2: Direct Google Maps URL
+                // Method 3: Direct Google Maps URL
                 else if (mapsLink.includes('maps.google.com') || mapsLink.includes('google.com/maps')) {
                     await extractFromFullMapsUrl(mapsLink);
                 }
-                // Method 3: Fallback to manual entry
+                // Method 4: Fallback to manual entry
                 else {
                     await manualExtraction();
                 }
@@ -267,6 +271,68 @@
                 console.error('Error extracting location:', error);
                 showStatus('Extraction failed, please enter manually', 'error');
                 await manualExtraction();
+            }
+        }
+        
+        async function extractFromAppleMaps(appleMapsUrl) {
+            try {
+                // Parse Apple Maps URL
+                // Format: https://maps.apple.com/?ll=34.001421,-118.483332&q=The%20Victorian&...
+                
+                let latitude = null;
+                let longitude = null;
+                let placeName = '';
+                
+                // Extract coordinates from ll parameter
+                const coordMatch = appleMapsUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (coordMatch) {
+                    latitude = parseFloat(coordMatch[1]);
+                    longitude = parseFloat(coordMatch[2]);
+                }
+                
+                // Extract place name from q parameter
+                const nameMatch = appleMapsUrl.match(/[?&]q=([^&]+)/);
+                if (nameMatch) {
+                    placeName = decodeURIComponent(nameMatch[1].replace(/\+/g, ' '));
+                }
+                
+                // Extract address if no place name found
+                if (!placeName) {
+                    const addressMatch = appleMapsUrl.match(/[?&]address=([^&]+)/);
+                    if (addressMatch) {
+                        const fullAddress = decodeURIComponent(addressMatch[1].replace(/\+/g, ' '));
+                        // Extract business name from address if possible
+                        placeName = fullAddress.split(',')[0];
+                    }
+                }
+                
+                if (latitude && longitude) {
+                    extractedLatitude = latitude;
+                    extractedLongitude = longitude;
+                    
+                    // If no place name extracted, ask user
+                    if (!placeName) {
+                        placeName = prompt('Place name could not be extracted. Please enter the place name:') || 'Unnamed Place';
+                    }
+                    
+                    document.getElementById('roomTitle').value = placeName;
+                    
+                    document.getElementById('extractedInfo').innerHTML = `
+                        <div class="extracted-info">
+                            <h3>🍎 Extracted from Apple Maps</h3>
+                            <p><strong>Name:</strong> ${placeName}</p>
+                            <p><strong>Coordinates:</strong> ${latitude.toFixed(6)}°, ${longitude.toFixed(6)}°</p>
+                            <p><strong>Source:</strong> Apple Maps</p>
+                        </div>
+                    `;
+                    
+                    showStatus('Location info extracted successfully from Apple Maps!', 'success');
+                } else {
+                    throw new Error('Could not extract coordinates from Apple Maps URL');
+                }
+                
+            } catch (error) {
+                throw error;
             }
         }
         
