@@ -279,25 +279,43 @@
                 // Parse Apple Maps URL - handle multiple formats
                 // Format 1: https://maps.apple.com/?ll=34.001421,-118.483332&q=The%20Victorian&...
                 // Format 2: https://maps.apple.com/place?address=140%20E%2017th%20St&...
+                // Format 3: https://maps.apple.com/place?coordinate=33.499487,-111.924238&name=Wasted%20Grain&...
                 
                 let latitude = null;
                 let longitude = null;
                 let placeName = '';
                 
+                // Extract coordinates from coordinate parameter (Format 3 - most common)
+                const coordinateMatch = appleMapsUrl.match(/[?&]coordinate=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                if (coordinateMatch) {
+                    latitude = parseFloat(coordinateMatch[1]);
+                    longitude = parseFloat(coordinateMatch[2]);
+                }
+                
                 // Extract coordinates from ll parameter (Format 1)
-                const coordMatch = appleMapsUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
-                if (coordMatch) {
-                    latitude = parseFloat(coordMatch[1]);
-                    longitude = parseFloat(coordMatch[2]);
+                if (!latitude) {
+                    const coordMatch = appleMapsUrl.match(/[?&]ll=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                    if (coordMatch) {
+                        latitude = parseFloat(coordMatch[1]);
+                        longitude = parseFloat(coordMatch[2]);
+                    }
+                }
+                
+                // Extract place name from name parameter (Format 3 - most common)
+                const nameParamMatch = appleMapsUrl.match(/[?&]name=([^&]+)/);
+                if (nameParamMatch) {
+                    placeName = decodeURIComponent(nameParamMatch[1].replace(/\+/g, ' '));
                 }
                 
                 // Extract place name from q parameter (Format 1)
-                const nameMatch = appleMapsUrl.match(/[?&]q=([^&]+)/);
-                if (nameMatch) {
-                    placeName = decodeURIComponent(nameMatch[1].replace(/\+/g, ' '));
+                if (!placeName) {
+                    const nameMatch = appleMapsUrl.match(/[?&]q=([^&]+)/);
+                    if (nameMatch) {
+                        placeName = decodeURIComponent(nameMatch[1].replace(/\+/g, ' '));
+                    }
                 }
                 
-                // Handle Format 2: place?address= URLs
+                // Handle Format 2: place?address= URLs (fallback)
                 if (!latitude || !placeName) {
                     const addressMatch = appleMapsUrl.match(/[?&]address=([^&]+)/);
                     if (addressMatch) {
@@ -306,7 +324,7 @@
                         
                         // Extract business name from address (usually the first part before comma)
                         const addressParts = fullAddress.split(',');
-                        if (addressParts.length > 0) {
+                        if (addressParts.length > 0 && !placeName) {
                             // Try to extract business name - if it's a number + street, ask for name
                             const firstPart = addressParts[0].trim();
                             if (/^\d+\s/.test(firstPart)) {
