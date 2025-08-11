@@ -32,7 +32,7 @@
             font-weight: 500;
             color: #555;
         }
-        input[type="text"], input[type="url"], textarea {
+        input[type="text"], input[type="url"], textarea, select {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
@@ -146,6 +146,24 @@
             <div class="form-group">
                 <label for="roomDescription">Description (optional):</label>
                 <textarea id="roomDescription" placeholder="Brief description of the venue..."></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="roomCategory">Category:</label>
+                <select id="roomCategory" required>
+                    <option value="">Select a category...</option>
+                    <option value="room">Room (Generic)</option>
+                    <option value="bar">Bar / Lounge / Pub</option>
+                    <option value="cafe">Café / Coffee Shop</option>
+                    <option value="restaurant">Restaurant</option>
+                    <option value="fast_food">Fast Food / Quick Service</option>
+                    <option value="casual">Casual Dining</option>
+                    <option value="mall">Shopping Center / Mall</option>
+                    <option value="stadium">Stadium / Sports Venue</option>
+                    <option value="museum">Museum / Gallery</option>
+                    <option value="park">Park / Recreation Area</option>
+                    <option value="nature">Natural Area / Outdoor Space</option>
+                </select>
             </div>
             
             <div class="form-group">
@@ -557,9 +575,10 @@
             
             const title = document.getElementById('roomTitle').value;
             const description = document.getElementById('roomDescription').value || title;
+            const category = document.getElementById('roomCategory').value;
             const imageFile = document.getElementById('imageFile').files[0];
             
-            if (!title || !imageFile || extractedLatitude === null || extractedLongitude === null) {
+            if (!title || !category || !imageFile || extractedLatitude === null || extractedLongitude === null) {
                 showStatus('Please fill in all required fields and extract location info', 'error');
                 return;
             }
@@ -581,6 +600,7 @@
                 const roomData = {
                     title: title,
                     description: description,
+                    category: category,
                     images: [imageUrl],
                     location: new firebase.firestore.GeoPoint(extractedLatitude, extractedLongitude),
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
